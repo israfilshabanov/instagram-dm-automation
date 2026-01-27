@@ -1,0 +1,45 @@
+{
+    "phases": [
+        {
+            "id": "01",
+            "title": "Başlangıç ve Kurulum",
+            "status": "in_progress",
+            "milestones": [
+                "Memory Bank Kurulumu",
+                "Backend İskelesi (Python)",
+                "Frontend İskelesi (React)",
+                "Git Başlangıcı"
+            ]
+        },
+        {
+            "id": "02",
+            "title": "Backend Temeli",
+            "status": "not_started",
+            "milestones": [
+                "Webhook Endpoint",
+                "OpenAI Entegrasyonu",
+                "ManyChat API İstemcisi"
+            ]
+        },
+        {
+            "id": "03",
+            "title": "Admin Paneli & Entegrasyon",
+            "status": "not_started",
+            "milestones": [
+                "Giriş Ekranı",
+                "Proje Özeti Formu",
+                "Test Sohbet Ekranı"
+            ]
+        },
+        {
+            "id": "04",
+            "title": "Deployment & Doğrulama",
+            "status": "not_started",
+            "milestones": [
+                "Railway Ayarları",
+                "Netlify Ayarları",
+                "Son Test"
+            ]
+        }
+    ]
+}
