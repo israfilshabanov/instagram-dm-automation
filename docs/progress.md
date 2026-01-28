@@ -66,7 +66,28 @@
 | `README.md` | Güncellendi |
 | `frontend/src/services/api.ts` | Güncellendi |
 
-### Next Steps
-- GitHub'a push (israfilshabanov/instagram-dm-automation)
-- Railway'de backend deploy
-- Netlify'da frontend deploy
+### GitHub Push
+- [x] **Commit:** `feat: Production-ready setup - deployment configs, env examples, updated README`
+- [x] **Push:** `israfilshabanov/instagram-dm-automation` master branch
+- 🔗 https://github.com/israfilshabanov/instagram-dm-automation
+
+### Next Steps (Deployment)
+1. **Railway Backend Deploy:**
+   - https://railway.app adresinden yeni proje oluştur
+   - GitHub repo'yu bağla
+   - Root Directory: `backend`
+   - Environment variables ekle (`.env.example`'daki değerler)
+   - Deploy et → Webhook URL'yi al
+
+2. **Netlify Frontend Deploy:**
+   - https://netlify.com adresinden yeni site oluştur
+   - GitHub repo'yu bağla
+   - Base directory: `frontend`
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Environment: `VITE_API_URL=<Railway URL>`
+
+3. **ManyChat Konfigürasyonu:**
+   - External Request URL'yi Railway URL'ye güncelle
+   - `AI_Response` custom field oluştur
+   - "Send AI Response" flow oluştur
