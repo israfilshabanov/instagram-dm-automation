@@ -88,11 +88,11 @@ app.post('/webhook', async (req, res) => {
     (async () => {
         try {
             // OpenAI'den cevap al
-            const systemPrompt = generateSystemPrompt();
+            // const systemPrompt = generateSystemPrompt(); // Eski statik çağrı
             const completion = await openai.chat.completions.create({
                 model: 'gpt-4',
                 messages: [
-                    { role: 'system', content: systemPrompt },
+                    { role: 'system', content: currentSystemPrompt }, // Dinamik prompt kullanımı
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0.7,
@@ -108,6 +108,48 @@ app.post('/webhook', async (req, res) => {
         }
     })();
 });
+// --- Admin API Routes ---
+// Global prompt saklama (geçici - memory içi)
+let currentSystemPrompt = `Sen profesyonel bir Instagram asistanısın. 
+Kullanıcıların sorularına nazik, kısa ve yardımsever cevaplar ver.
+Dil: Kullanıcının dili veya Türkçe/Azerice.
+Linkleri açamazsın. Fiyat sorulursa "Detaylı bilgi için web sitemizi ziyaret edin" de.`;
+app.post('/admin/savePrompt', (req, res) => {
+    const { prompt } = req.body;
+    if (prompt) {
+        currentSystemPrompt = prompt;
+        console.log('Sistem Promptu Güncellendi:', currentSystemPrompt);
+        res.send({ status: 'success', message: 'Prompt güncellendi' });
+    }
+    else {
+        res.status(400).send({ error: 'Prompt metni eksik' });
+    }
+});
+app.post('/admin/testPrompt', async (req, res) => {
+    const { message } = req.body;
+    if (!message) {
+        res.status(400).send({ error: 'Mesaj eksik' });
+        return;
+    }
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [
+                { role: 'system', content: currentSystemPrompt },
+                { role: 'user', content: message },
+            ],
+            temperature: 0.7,
+        });
+        res.send({ reply: completion.choices[0].message?.content });
+    }
+    catch (error) {
+        console.error('Test Hatası:', error.message);
+        res.status(500).send({ error: error.message });
+    }
+});
+// Güncellenmiş generateSystemPrompt fonksiyonu artık global değişkeni kullanmalı
+// (Helper fonksiyonun üzerine yazıyoruz veya doğrudan değişkeni kullanıyoruz)
+// Not: Aşağıdaki webhook handler içinde generateSystemPrompt() değil, doğrudan currentSystemPrompt kullanacağız.
 app.listen(port, () => {
     console.log(`[server]: Sunucu http://localhost:${port} adresinde çalışıyor`);
 });

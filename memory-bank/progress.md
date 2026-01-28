@@ -15,8 +15,10 @@
 | 05 | Deployment & Test | **Hazır** |
 
 ## Son Güncellemeler
--   **2026-01-25:** Admin Paneli arayüzü ve API bağlantıları kodlandı.
+-   **2026-01-27:** Kodlar başarıyla `israfilshabanov` GitHub hesabına yüklendi.
+    🔗 [Link](https://github.com/israfilshabanov/instagram-dm-automation)
+-   **2026-01-25:** Backend Node.js'e taşındı, Admin Paneli arayüzü ve API bağlantıları kodlandı.
 -   **2026-01-25:** Frontend build testi yapıldı.
 
 ## Engelleyiciler (Blockers)
--   GitHub ve Cloud Hesapları (Kullanıcı tarafında).
+-   Yok (Deployment için bekleniyor).
