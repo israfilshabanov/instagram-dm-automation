@@ -1,13 +1,18 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
 import os
+import json
 import httpx
 from openai import OpenAI
 
 # Çevresel değişkenleri yükle
 load_dotenv()
+
+# Config dosyası yolu
+CONFIG_FILE = "data/config.json"
 
 app = FastAPI(
     title="Instagram DM Automation API",
@@ -48,11 +53,230 @@ class WebhookPayload(BaseModel):
     class Config:
         extra = "ignore"  # Ekstra alanları yoksay
 
+class ServiceGroup(BaseModel):
+    """Xidmət qrupu modeli"""
+    serviceName: Optional[str] = ""  # Xidmət adı
+    ageGroups: Optional[str] = ""  # Yaş qrupları (məs: 6-12, 13-18, böyüklər)
+    schedule: Optional[str] = ""  # Cədvəl (məs: B.e-Cümə 18:00-20:00)
+    levels: Optional[str] = ""  # Səviyyələr (başlanğıc, orta, qabaqcıl)
+    maxParticipants: Optional[str] = ""  # Maksimum iştirakçı sayı
+    price: Optional[str] = ""  # Qiymət
+
+class BriefData(BaseModel):
+    """Tam işletmə profili - 40 sual bazasında"""
+    
+    # BÖLÜM 1: ƏSAS MƏLUMATLAR
+    businessName: str  # 1. İşletmənin rəsmi adı
+    businessDescription: Optional[str] = ""  # 2. Qısa təsvir
+    yearsInBusiness: Optional[str] = ""  # 3. Neçə ildir fəaliyyət göstərir
+    mission: Optional[str] = ""  # 4. Missiya
+    coreValues: Optional[str] = ""  # 5. Əsas dəyərlər
+    
+    # BÖLÜM 2: XİDMƏTLƏR VƏ QRUPLAR
+    servicesList: Optional[str] = ""  # 6. Xidmətlər siyahısı
+    serviceDetails: Optional[str] = ""  # 7-12. Yaş qrupları, cədvəl, səviyyələr (JSON string)
+    hasTrialClass: Optional[str] = ""  # Sınaq dərsi varmı?
+    groupVsIndividual: Optional[str] = ""  # Qrup/fərdi dərslər
+    
+    # BÖLÜM 3: QİYMƏTLƏR
+    pricingDetails: Optional[str] = ""  # 13. Qiymət cədvəli
+    subscriptionPlans: Optional[str] = ""  # 14. Aylıq abunə
+    packageDiscounts: Optional[str] = ""  # 15. Paket endirimləri
+    familyDiscounts: Optional[str] = ""  # 16. Ailə/qrup endirimi
+    paymentMethods: Optional[str] = ""  # 17. Ödəniş üsulları
+    priceResponsePolicy: Optional[str] = ""  # 18. Qiymət soruşanda nə cavab verilsin?
+    
+    # BÖLÜM 4: İŞ SAATLARI VƏ MƏKAN
+    workingDays: Optional[str] = ""  # 19. İş günləri
+    workingHours: Optional[str] = ""  # 20. İş saatları
+    holidaySchedule: Optional[str] = ""  # 21. Bayram günləri
+    mainAddress: Optional[str] = ""  # 22. Əsas ünvan
+    directionsInfo: Optional[str] = ""  # 23. Necə gəlmək olar
+    otherBranches: Optional[str] = ""  # 24. Digər filiallar
+    onlineServices: Optional[str] = ""  # 25. Onlayn xidmət
+    
+    # BÖLÜM 5: ƏLAQƏ VƏ QEYDİYYAT
+    phoneNumber: Optional[str] = ""  # 26. Telefon (WhatsApp)
+    email: Optional[str] = ""  # 27. Email
+    website: Optional[str] = ""  # 28. Veb sayt
+    socialMedia: Optional[str] = ""  # 29. Sosial media
+    registrationProcess: Optional[str] = ""  # 30. Qeydiyyat prosesi
+    
+    # BÖLÜM 6: TƏZ-TƏZ SORUŞULAN SUALLAR
+    faq: Optional[str] = ""  # 31. SSS və cavablar
+    
+    # BÖLÜM 7: ÜSLİP VƏ DİL
+    preferredLanguage: Optional[str] = "Azərbaycan dili"  # 32. Dil
+    communicationStyle: Optional[str] = ""  # 33. Rəsmi/samimi
+    useEmojis: Optional[str] = ""  # 34. Emoji istifadəsi
+    responseLength: Optional[str] = ""  # 35. Qısa/ətraflı cavablar
+    
+    # BÖLÜM 8: MƏHDUDIYYƏTLƏR
+    mentionCompetitors: Optional[str] = ""  # 36. Rəqiblərdən danışılsınmı
+    exactPricing: Optional[str] = ""  # 37. Dəqiq qiymət verilsinmi
+    topicsToAvoid: Optional[str] = ""  # 38. Qaçınılacaq mövzular
+    urgentCases: Optional[str] = ""  # 39. Təcili hallar
+    complaintHandling: Optional[str] = ""  # 40. Şikayət idarəetməsi
+
+class BriefPayload(BaseModel):
+    briefData: BriefData
+
 class PromptPayload(BaseModel):
     prompt: str
 
 class TestPayload(BaseModel):
     message: str
+
+# --- Config Functions ---
+def load_config():
+    """JSON dosyasından config yükle"""
+    try:
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Config yükleme hatası: {e}")
+    return {}
+
+def save_config(data: dict):
+    """Config'i JSON dosyasına kaydet"""
+    try:
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"Config kaydedildi: {CONFIG_FILE}")
+    except Exception as e:
+        print(f"Config kaydetme hatası: {e}")
+
+def generate_prompt_with_ai(brief: BriefData) -> str:
+    """AI kullanarak 40 sual bazasında sistem promptu oluştur"""
+    generation_prompt = f"""Aşağıdaki işletme bilgilerini kullanarak, Instagram DM'lerde müşterilere cevap verecek profesyonel bir AI asistanı için detaylı sistem promptu oluştur. Bu asistan işletmenin "dijital ikizi" olacak.
+
+═══════════════════════════════════════════
+BÖLÜM 1: ƏSAS MƏLUMATLAR
+═══════════════════════════════════════════
+• İşletmə Adı: {brief.businessName}
+• Təsvir: {brief.businessDescription}
+• Fəaliyyət Müddəti: {brief.yearsInBusiness}
+• Missiya: {brief.mission}
+• Əsas Dəyərlər: {brief.coreValues}
+
+═══════════════════════════════════════════
+BÖLÜM 2: XİDMƏTLƏR VƏ QRUPLAR
+═══════════════════════════════════════════
+• Xidmətlər Siyahısı: {brief.servicesList}
+• Xidmət Detalları (yaş qrupları, cədvəl, səviyyələr): {brief.serviceDetails}
+• Sınaq Dərsi: {brief.hasTrialClass}
+• Qrup/Fərdi: {brief.groupVsIndividual}
+
+═══════════════════════════════════════════
+BÖLÜM 3: QİYMƏTLƏR
+═══════════════════════════════════════════
+• Qiymət Cədvəli: {brief.pricingDetails}
+• Abunə Planları: {brief.subscriptionPlans}
+• Paket Endirimləri: {brief.packageDiscounts}
+• Ailə/Qrup Endirimi: {brief.familyDiscounts}
+• Ödəniş Üsulları: {brief.paymentMethods}
+• Qiymət Siyasəti (necə cavab verilsin): {brief.priceResponsePolicy}
+
+═══════════════════════════════════════════
+BÖLÜM 4: İŞ SAATLARI VƏ MƏKAN
+═══════════════════════════════════════════
+• İş Günləri: {brief.workingDays}
+• İş Saatları: {brief.workingHours}
+• Bayram Cədvəli: {brief.holidaySchedule}
+• Əsas Ünvan: {brief.mainAddress}
+• Gəliş Yolu: {brief.directionsInfo}
+• Digər Filiallar: {brief.otherBranches}
+• Onlayn Xidmət: {brief.onlineServices}
+
+═══════════════════════════════════════════
+BÖLÜM 5: ƏLAQƏ VƏ QEYDİYYAT
+═══════════════════════════════════════════
+• Telefon: {brief.phoneNumber}
+• Email: {brief.email}
+• Veb Sayt: {brief.website}
+• Sosial Media: {brief.socialMedia}
+• Qeydiyyat Prosesi: {brief.registrationProcess}
+
+═══════════════════════════════════════════
+BÖLÜM 6: TƏZ-TƏZ SORUŞULAN SUALLAR
+═══════════════════════════════════════════
+{brief.faq}
+
+═══════════════════════════════════════════
+BÖLÜM 7: ÜSLİP VƏ DİL
+═══════════════════════════════════════════
+• Dil: {brief.preferredLanguage}
+• Üslub: {brief.communicationStyle}
+• Emoji: {brief.useEmojis}
+• Cavab Uzunluğu: {brief.responseLength}
+
+═══════════════════════════════════════════
+BÖLÜM 8: MƏHDUDIYYƏTLƏR
+═══════════════════════════════════════════
+• Rəqiblər Haqqında: {brief.mentionCompetitors}
+• Dəqiq Qiymət: {brief.exactPricing}
+• Qaçınılacaq Mövzular: {brief.topicsToAvoid}
+• Təcili Hallar: {brief.urgentCases}
+• Şikayət İdarəetməsi: {brief.complaintHandling}
+
+═══════════════════════════════════════════
+SİSTEM PROMPTU QAYDALARI:
+═══════════════════════════════════════════
+1. Prompt {brief.preferredLanguage} dilində olsun
+2. Asistan bu işletmənin "dijital ikizi" kimi davransın
+3. Yuxarıdakı bütün məlumatları istifadə etsin
+4. SSS-ləri əzbər bilsin və dəqiq cavab versin
+5. Qiymət siyasətinə uyğun cavab versin
+6. Linkləri aça bilmədiyini bildirsin
+7. Məhdudiyyətlərə hörmət etsin
+8. Şikayətləri professional şəkildə idarə etsin
+
+YALNIZ SİSTEM PROMPTUNU YAZ, BAŞQA HEÇ NƏ ƏLAVƏ ETMƏ."""
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4o",  # Cache desteği için GPT-4o
+            messages=[
+                {"role": "system", "content": "Sən peşəkar bir AI prompt mühəndisisən. İşletmələr üçün mükəmməl sistem promptları yaradırsan."},
+                {"role": "user", "content": generation_prompt}
+            ],
+            temperature=0.7
+        )
+        return completion.choices[0].message.content or ""
+    except Exception as e:
+        print(f"AI prompt üretme hatası: {e}")
+        # Fallback: Manuel şablon
+        return f"""Sən {brief.businessName} üçün süni intellekt köməkçisisən - işletmənin dijital ikizisən.
+
+HAQQIMIZDA:
+{brief.businessDescription}
+Fəaliyyət müddəti: {brief.yearsInBusiness}
+Missiya: {brief.mission}
+
+XİDMƏTLƏR:
+{brief.servicesList}
+{brief.serviceDetails}
+
+İŞ SAATLARI: {brief.workingDays} - {brief.workingHours}
+MƏKAN: {brief.mainAddress}
+ƏLAQƏ: {brief.phoneNumber} | {brief.email}
+
+QİYMƏTLƏR: {brief.pricingDetails}
+Qiymət soruşanda: {brief.priceResponsePolicy}
+
+TƏZ-TƏZ SORUŞULAN SUALLAR:
+{brief.faq}
+
+ÜSLUB: {brief.communicationStyle}
+DİL: {brief.preferredLanguage}
+
+MƏHDUDIYYƏTLƏR:
+- {brief.topicsToAvoid}
+- Linkləri aça bilmirsən
+- Həmişə nəzakətli və peşəkar ol"""
 
 # --- Helper Functions ---
 async def send_to_manychat(subscriber_id: str, message: str):
@@ -99,21 +323,44 @@ async def send_to_manychat(subscriber_id: str, message: str):
             print(f"ManyChat API Hatası: {e}")
 
 async def process_webhook(subscriber_id: str, user_message: str):
+    """
+    Webhook işlemi - GPT-4o ile cache desteği
+    OpenAI Prompt Caching: Aynı sistem promptu tekrar geldiğinde otomatik cache'lenir
+    - %50 input token indirimi
+    - Daha hızlı yanıt süresi
+    - Minimum 1024 token gerekli (sistem promptumuz yeterli)
+    """
     global current_system_prompt
     try:
         completion = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",  # Cache desteği için GPT-4o
             messages=[
-                {"role": "system", "content": current_system_prompt},
+                {"role": "system", "content": current_system_prompt},  # Cache'lenen kısım
                 {"role": "user", "content": user_message}
             ],
             temperature=0.7
         )
-        reply = completion.choices[0].message.content or "Üzgünüm, şu an cevap veremiyorum."
+        reply = completion.choices[0].message.content or "Üzr istəyirəm, hazırda cavab verə bilmirəm."
         print(f"[OpenAI] Cevap: {reply}")
+        
+        # Cache bilgisi (eğer varsa)
+        if hasattr(completion, 'usage') and completion.usage:
+            cached = getattr(completion.usage, 'prompt_tokens_details', {})
+            if cached:
+                print(f"[OpenAI Cache] {cached}")
+        
         await send_to_manychat(subscriber_id, reply)
     except Exception as e:
         print(f"İşlem Hatası: {e}")
+
+# --- Startup Event ---
+@app.on_event("startup")
+def startup_event():
+    global current_system_prompt
+    config = load_config()
+    if config.get("systemPrompt"):
+        current_system_prompt = config["systemPrompt"]
+        print(f"Kayıtlı sistem promptu yüklendi: {current_system_prompt[:50]}...")
 
 # --- Routes ---
 @app.get("/")
@@ -131,11 +378,29 @@ async def webhook(payload: WebhookPayload, background_tasks: BackgroundTasks):
     return {"status": "received"}
 
 @app.post("/admin/savePrompt")
-def save_prompt(payload: PromptPayload):
+def save_prompt(payload: BriefPayload):
     global current_system_prompt
-    current_system_prompt = payload.prompt
-    print(f"Sistem Promptu Güncellendi: {current_system_prompt}")
-    return {"status": "success", "message": "Prompt güncellendi"}
+    
+    brief = payload.briefData
+    print(f"Brief alındı: {brief.businessName}")
+    
+    # AI ile sistem promptu oluştur
+    generated_prompt = generate_prompt_with_ai(brief)
+    current_system_prompt = generated_prompt
+    
+    # Config'i kaydet (brief + prompt)
+    config = {
+        "briefData": brief.model_dump(),
+        "systemPrompt": generated_prompt
+    }
+    save_config(config)
+    
+    print(f"Sistem Promptu Güncellendi: {current_system_prompt[:100]}...")
+    return {
+        "success": True, 
+        "message": "Dijital ikiz oluşturuldu",
+        "generatedPrompt": generated_prompt
+    }
 
 @app.post("/admin/testPrompt")
 def test_prompt(payload: TestPayload):
