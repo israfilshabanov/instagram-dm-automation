@@ -27,8 +27,9 @@ body {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 button {

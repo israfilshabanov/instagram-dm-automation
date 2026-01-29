@@ -1,24 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Building2, Target, Wallet, MapPin, Phone, HelpCircle, Palette, ShieldAlert, 
     ChevronLeft, ChevronRight, Sparkles, Loader2, X, Check
 } from 'lucide-react';
 import { savePrompt, type BriefData } from '../services/api';
 
+const STORAGE_KEY = 'briefFormData';
+const STORAGE_STEP_KEY = 'briefActiveStep';
+
+const defaultFormData: BriefData = {
+    businessName: '', businessDescription: '', yearsInBusiness: '', mission: '', coreValues: '',
+    servicesList: '', serviceDetails: '', hasTrialClass: '', groupVsIndividual: '',
+    pricingDetails: '', subscriptionPlans: '', packageDiscounts: '', familyDiscounts: '', paymentMethods: '', priceResponsePolicy: '',
+    workingDays: '', workingHours: '', holidaySchedule: '', mainAddress: '', directionsInfo: '', otherBranches: '', onlineServices: '',
+    phoneNumber: '', email: '', website: '', socialMedia: '', registrationProcess: '',
+    faq: '', preferredLanguage: 'Azərbaycan dili', communicationStyle: '', useEmojis: '', responseLength: '',
+    mentionCompetitors: '', exactPricing: '', topicsToAvoid: '', urgentCases: '', complaintHandling: ''
+};
+
 const ProjectBrief: React.FC = () => {
-    const [activeSection, setActiveSection] = useState(0);
-    const [formData, setFormData] = useState<BriefData>({
-        businessName: '', businessDescription: '', yearsInBusiness: '', mission: '', coreValues: '',
-        servicesList: '', serviceDetails: '', hasTrialClass: '', groupVsIndividual: '',
-        pricingDetails: '', subscriptionPlans: '', packageDiscounts: '', familyDiscounts: '', paymentMethods: '', priceResponsePolicy: '',
-        workingDays: '', workingHours: '', holidaySchedule: '', mainAddress: '', directionsInfo: '', otherBranches: '', onlineServices: '',
-        phoneNumber: '', email: '', website: '', socialMedia: '', registrationProcess: '',
-        faq: '', preferredLanguage: 'Azərbaycan dili', communicationStyle: '', useEmojis: '', responseLength: '',
-        mentionCompetitors: '', exactPricing: '', topicsToAvoid: '', urgentCases: '', complaintHandling: ''
+    // LocalStorage'dan yükle
+    const [activeSection, setActiveSection] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_STEP_KEY);
+        return saved ? parseInt(saved, 10) : 0;
+    });
+    const [formData, setFormData] = useState<BriefData>(() => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : defaultFormData;
     });
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState(false);
+
+    // Form verileri değişince localStorage'a kaydet
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    }, [formData]);
+
+    // Aktif adım değişince localStorage'a kaydet
+    useEffect(() => {
+        localStorage.setItem(STORAGE_STEP_KEY, activeSection.toString());
+    }, [activeSection]);
 
     const handleChange = (field: keyof BriefData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
