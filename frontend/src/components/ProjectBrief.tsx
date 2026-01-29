@@ -218,12 +218,14 @@ const ProjectBrief: React.FC = () => {
                 </div>
             </div>
 
-            {/* Step Indicators */}
+            {/* Step Indicators - Horizontal scroll on mobile */}
             <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '0.5rem',
-                marginBottom: '2rem'
+                display: 'flex',
+                gap: '0.375rem',
+                marginBottom: '1.5rem',
+                overflowX: 'auto',
+                paddingBottom: '0.5rem',
+                WebkitOverflowScrolling: 'touch'
             }}>
                 {sections.map((section, index) => {
                     const SectionIcon = section.icon;
@@ -236,48 +238,31 @@ const ProjectBrief: React.FC = () => {
                             onClick={() => setActiveSection(index)}
                             style={{
                                 display: 'flex',
-                                flexDirection: 'column',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 0.5rem',
-                                background: isActive 
-                                    ? 'rgba(99, 102, 241, 0.2)' 
-                                    : isCompleted 
-                                        ? 'rgba(34, 197, 94, 0.1)'
-                                        : 'rgba(255,255,255,0.05)',
-                                border: isActive 
-                                    ? '2px solid #6366f1' 
-                                    : '2px solid transparent',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
+                                gap: '0.375rem',
+                                padding: '0.5rem 0.75rem',
                                 background: isActive 
                                     ? 'linear-gradient(135deg, #6366f1, #a855f7)'
-                                    : isCompleted
-                                        ? '#22c55e'
-                                        : 'rgba(255,255,255,0.1)'
-                            }}>
-                                {isCompleted ? (
-                                    <Check size={18} color="white" />
-                                ) : (
-                                    <SectionIcon size={18} color={isActive ? 'white' : '#94a3b8'} />
-                                )}
-                            </div>
+                                    : isCompleted 
+                                        ? 'rgba(34, 197, 94, 0.15)'
+                                        : 'rgba(255,255,255,0.05)',
+                                border: 'none',
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0,
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {isCompleted ? (
+                                <Check size={14} color="#22c55e" />
+                            ) : (
+                                <SectionIcon size={14} color={isActive ? 'white' : '#94a3b8'} />
+                            )}
                             <span style={{ 
-                                fontSize: '0.7rem', 
-                                color: isActive ? '#fff' : '#94a3b8',
-                                textAlign: 'center',
-                                lineHeight: '1.2',
-                                fontWeight: isActive ? '600' : '400'
+                                fontSize: '0.75rem', 
+                                color: isActive ? '#fff' : isCompleted ? '#22c55e' : '#94a3b8',
+                                fontWeight: isActive ? '600' : '500'
                             }}>
                                 {section.title}
                             </span>
@@ -290,30 +275,30 @@ const ProjectBrief: React.FC = () => {
             <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '1rem',
-                marginBottom: '1.5rem',
-                padding: '1rem',
+                gap: '0.75rem',
+                marginBottom: '1rem',
+                padding: '0.75rem',
                 background: 'rgba(99, 102, 241, 0.1)',
-                borderRadius: '12px',
+                borderRadius: '10px',
                 border: '1px solid rgba(99, 102, 241, 0.2)'
             }}>
                 <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
                     background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0
                 }}>
-                    <IconComponent size={24} color="white" />
+                    <IconComponent size={20} color="white" />
                 </div>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>
+                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
                         {currentSection.title}
                     </h2>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#94a3b8' }}>
+                    <p style={{ margin: '0.125rem 0 0', fontSize: '0.8125rem', color: '#94a3b8' }}>
                         {currentSection.fields.length} sual
                     </p>
                 </div>
@@ -323,15 +308,15 @@ const ProjectBrief: React.FC = () => {
             <div style={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
-                gap: '1.25rem',
-                marginBottom: '2rem'
+                gap: '1rem',
+                marginBottom: '1.5rem'
             }}>
                 {currentSection.fields.map((field: { key: string; label: string; placeholder: string; type: string; rows?: number; required?: boolean }) => (
                     <div key={field.key}>
                         <label style={{ 
                             display: 'block',
-                            marginBottom: '0.5rem',
-                            fontSize: '0.875rem',
+                            marginBottom: '0.375rem',
+                            fontSize: '0.8125rem',
                             fontWeight: '500',
                             color: '#e2e8f0'
                         }}>
@@ -345,12 +330,12 @@ const ProjectBrief: React.FC = () => {
                                 onChange={e => handleChange(field.key as keyof BriefData, e.target.value)}
                                 style={{
                                     width: '100%',
-                                    padding: '0.875rem 1rem',
-                                    borderRadius: '10px',
+                                    padding: '0.75rem',
+                                    borderRadius: '8px',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     background: 'rgba(0,0,0,0.2)',
                                     color: 'white',
-                                    fontSize: '0.9375rem',
+                                    fontSize: '0.875rem',
                                     outline: 'none',
                                     transition: 'border-color 0.2s ease',
                                     boxSizing: 'border-box'
@@ -366,12 +351,12 @@ const ProjectBrief: React.FC = () => {
                                 onChange={e => handleChange(field.key as keyof BriefData, e.target.value)}
                                 style={{
                                     width: '100%',
-                                    padding: '0.875rem 1rem',
-                                    borderRadius: '10px',
+                                    padding: '0.75rem',
+                                    borderRadius: '8px',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     background: 'rgba(0,0,0,0.2)',
                                     color: 'white',
-                                    fontSize: '0.9375rem',
+                                    fontSize: '0.875rem',
                                     resize: 'vertical',
                                     outline: 'none',
                                     transition: 'border-color 0.2s ease',
@@ -391,8 +376,7 @@ const ProjectBrief: React.FC = () => {
                 display: 'flex', 
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '1rem',
-                flexWrap: 'wrap'
+                gap: '0.75rem'
             }}>
                 <button
                     onClick={() => setActiveSection(prev => Math.max(0, prev - 1))}
@@ -400,19 +384,19 @@ const ProjectBrief: React.FC = () => {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.75rem 1.25rem',
-                        borderRadius: '10px',
+                        gap: '0.375rem',
+                        padding: '0.625rem 1rem',
+                        borderRadius: '8px',
                         border: '1px solid rgba(255,255,255,0.1)',
                         background: 'transparent',
                         color: activeSection === 0 ? '#64748b' : '#e2e8f0',
                         cursor: activeSection === 0 ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9375rem',
+                        fontSize: '0.8125rem',
                         fontWeight: '500',
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <ChevronLeft size={18} />
+                    <ChevronLeft size={16} />
                     Əvvəlki
                 </button>
 
@@ -423,14 +407,14 @@ const ProjectBrief: React.FC = () => {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem 1.5rem',
-                            borderRadius: '10px',
+                            gap: '0.375rem',
+                            padding: '0.625rem 1rem',
+                            borderRadius: '8px',
                             border: 'none',
                             background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                             color: 'white',
                             cursor: loading ? 'wait' : 'pointer',
-                            fontSize: '0.9375rem',
+                            fontSize: '0.8125rem',
                             fontWeight: '600',
                             opacity: loading ? 0.7 : 1,
                             transition: 'all 0.2s ease'
@@ -438,13 +422,13 @@ const ProjectBrief: React.FC = () => {
                     >
                         {loading ? (
                             <>
-                                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
                                 Yaradılır...
                             </>
                         ) : (
                             <>
-                                <Sparkles size={18} />
-                                Dijital İkizi Yarat
+                                <Sparkles size={14} />
+                                Yarat
                             </>
                         )}
                     </button>
@@ -454,20 +438,20 @@ const ProjectBrief: React.FC = () => {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem 1.25rem',
-                            borderRadius: '10px',
+                            gap: '0.375rem',
+                            padding: '0.625rem 1rem',
+                            borderRadius: '8px',
                             border: 'none',
                             background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                             color: 'white',
                             cursor: 'pointer',
-                            fontSize: '0.9375rem',
+                            fontSize: '0.8125rem',
                             fontWeight: '500',
                             transition: 'all 0.2s ease'
                         }}
                     >
                         Növbəti
-                        <ChevronRight size={18} />
+                        <ChevronRight size={16} />
                     </button>
                 )}
             </div>
