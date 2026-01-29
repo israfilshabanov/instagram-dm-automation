@@ -130,9 +130,8 @@ class PromptPayload(BaseModel):
 class TestPayload(BaseModel):
     message: str
 
-class PausePayload(BaseModel):
-    subscriber_id: str
-    duration_minutes: Optional[int] = 60  # Default 1 saat
+# Human Takeover ayarları
+HUMAN_TAKEOVER_COOLDOWN_MINUTES = 60  # Sahip cevap verdikten sonra AI bu süre boyunca bekler
 
 # --- Database Functions (Supabase PostgreSQL with psycopg2) ---
 def get_db_connection():
@@ -458,28 +457,6 @@ def pause_conversation(subscriber_id: str, duration_minutes: int = 60, reason: s
     finally:
         conn.close()
 
-def resume_conversation(subscriber_id: str):
-    """
-    Konuşmayı devam ettir - AI tekrar devreye girer
-    """
-    if not DATABASE_URL:
-        return False
-    
-    conn = get_db_connection()
-    if not conn:
-        return False
-    
-    try:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM paused_conversations WHERE subscriber_id = %s", (subscriber_id,))
-            conn.commit()
-            print(f"[Human Takeover] AI tekrar aktif: {subscriber_id}")
-            return True
-    except Exception as e:
-        print(f"Resume hatası: {e}")
-        return False
-    finally:
-        conn.close()
 
 async def process_webhook(subscriber_id: str, user_message: str):
     """
@@ -584,77 +561,25 @@ def test_prompt(payload: TestPayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ═══════════════════════════════════════════════════════════════════
-# HUMAN TAKEOVER API - Sahip devreye girdiğinde AI'ı durdur
+# OTOMATİK HUMAN TAKEOVER - Tamamen otomatik, manuel kontrol YOK
+# ═══════════════════════════════════════════════════════════════════
+# Sistem şöyle çalışır:
+# 1. ManyChat'ten "outbound" (sahip gönderdi) mesaj gelirse → AI durur
+# 2. Belirli süre (60 dk) geçince → AI otomatik devam eder
+# 3. Hiçbir manuel "aç/kapat" butonu YOK
 # ═══════════════════════════════════════════════════════════════════
 
-@app.post("/admin/pauseAI")
-def pause_ai(payload: PausePayload):
+@app.post("/webhook/outbound")
+def outbound_webhook(payload: dict):
     """
-    AI'ı belirli bir kullanıcı için durdur
-    - Sahip Instagram'dan manuel cevap verdiğinde çağrılır
-    - Default 60 dakika, sonra AI otomatik devam eder
-    """
-    success = pause_conversation(payload.subscriber_id, payload.duration_minutes)
-    if success:
-        return {
-            "success": True,
-            "message": f"AI {payload.duration_minutes} dakika boyunca devre dışı",
-            "subscriber_id": payload.subscriber_id
-        }
-    raise HTTPException(status_code=500, detail="Pause işlemi başarısız")
-
-@app.post("/admin/resumeAI/{subscriber_id}")
-def resume_ai(subscriber_id: str):
-    """
-    AI'ı tekrar aktif et
-    - Sahip konuşmayı bitirdiğinde çağrılır
-    """
-    success = resume_conversation(subscriber_id)
-    if success:
-        return {
-            "success": True,
-            "message": "AI tekrar aktif",
-            "subscriber_id": subscriber_id
-        }
-    raise HTTPException(status_code=500, detail="Resume işlemi başarısız")
-
-@app.get("/admin/pausedConversations")
-def get_paused_conversations():
-    """
-    Şu an pause'da olan tüm konuşmaları listele
-    """
-    if not DATABASE_URL:
-        return {"paused": []}
-    
-    conn = get_db_connection()
-    if not conn:
-        return {"paused": []}
-    
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT subscriber_id, paused_at, expires_at, reason 
-                FROM paused_conversations 
-                WHERE expires_at > CURRENT_TIMESTAMP
-                ORDER BY paused_at DESC
-            """)
-            rows = cur.fetchall()
-            return {"paused": [dict(row) for row in rows]}
-    except Exception as e:
-        print(f"Liste hatası: {e}")
-        return {"paused": []}
-    finally:
-        conn.close()
-
-@app.post("/webhook/humanReply")
-def human_reply_webhook(payload: dict):
-    """
-    ManyChat'ten sahip cevap verdiğinde tetiklenen webhook
-    - ManyChat'te "Live Chat" açıldığında bu endpoint'e POST yapılır
-    - Otomatik olarak o kullanıcı için AI durur
+    OTOMATİK: Sahip mesaj gönderdiğinde ManyChat bu webhook'u tetikler
+    - ManyChat'te "Outbound Message" trigger'ı kurulmalı
+    - Sahip cevap verdiğinde otomatik olarak AI o kullanıcı için durur
+    - 60 dakika sonra otomatik devam eder
     """
     subscriber_id = str(payload.get("id", payload.get("subscriber_id", "")))
     if subscriber_id:
-        pause_conversation(subscriber_id, duration_minutes=60, reason="human_reply")
-        return {"status": "paused", "subscriber_id": subscriber_id}
-    return {"status": "error", "message": "subscriber_id gerekli"}
+        pause_conversation(subscriber_id, duration_minutes=HUMAN_TAKEOVER_COOLDOWN_MINUTES, reason="owner_replied")
+        print(f"[OTOMATİK] Sahip cevap verdi → AI {HUMAN_TAKEOVER_COOLDOWN_MINUTES} dk durdu: {subscriber_id}")
+        return {"status": "auto_paused", "subscriber_id": subscriber_id, "cooldown_minutes": HUMAN_TAKEOVER_COOLDOWN_MINUTES}
+    return {"status": "ignored", "reason": "subscriber_id yok"}
