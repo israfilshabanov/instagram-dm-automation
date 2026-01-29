@@ -70,9 +70,9 @@ async def send_to_manychat(subscriber_id: str, message: str):
     
     async with httpx.AsyncClient() as http:
         try:
-            # Adım 1: Custom Field güncelle
+            # Adım 1: Custom Field güncelle (setCustomFieldByName kullan)
             field_response = await http.post(
-                "https://api.manychat.com/fb/subscriber/setCustomField",
+                "https://api.manychat.com/fb/subscriber/setCustomFieldByName",
                 json={
                     "subscriber_id": int(subscriber_id),
                     "field_name": "AI_Response",
