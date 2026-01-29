@@ -35,8 +35,11 @@ Linkleri açamazsın. Fiyat sorulursa "Detaylı bilgi için web sitemizi ziyaret
 
 # --- Pydantic Models ---
 class WebhookPayload(BaseModel):
-    subscriber_id: str
-    message: str
+    id: int  # ManyChat contact ID
+    last_input_text: str  # Kullanıcının son mesajı
+    
+    class Config:
+        extra = "ignore"  # Ekstra alanları yoksay
 
 class PromptPayload(BaseModel):
     prompt: str
@@ -114,7 +117,7 @@ def health_check():
 @app.post("/webhook")
 async def webhook(payload: WebhookPayload, background_tasks: BackgroundTasks):
     print(f"Webhook Payload: {payload}")
-    background_tasks.add_task(process_webhook, payload.subscriber_id, payload.message)
+    background_tasks.add_task(process_webhook, str(payload.id), payload.last_input_text)
     return {"status": "received"}
 
 @app.post("/admin/savePrompt")
