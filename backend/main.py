@@ -57,6 +57,7 @@ class TestPayload(BaseModel):
 # --- Helper Functions ---
 async def send_to_manychat(subscriber_id: str, message: str):
     manychat_key = os.getenv("MANYCHAT_API_KEY")
+    flow_ns = os.getenv("MANYCHAT_FLOW_NS")
     
     if not manychat_key:
         print("ManyChat API Key eksik!")
@@ -69,28 +70,31 @@ async def send_to_manychat(subscriber_id: str, message: str):
     
     async with httpx.AsyncClient() as http:
         try:
-            # sendContent API ile doğrudan mesaj gönder
-            response = await http.post(
-                "https://api.manychat.com/fb/sending/sendContent",
+            # Adım 1: Custom Field güncelle
+            field_response = await http.post(
+                "https://api.manychat.com/fb/subscriber/setCustomField",
                 json={
                     "subscriber_id": int(subscriber_id),
-                    "data": {
-                        "version": "v2",
-                        "content": {
-                            "messages": [
-                                {
-                                    "type": "text",
-                                    "text": message
-                                }
-                            ]
-                        }
-                    },
-                    "message_tag": "ACCOUNT_UPDATE"
+                    "field_name": "AI_Response",
+                    "field_value": message
                 },
                 headers=headers
             )
-            print(f"[ManyChat] Mesaj gönderildi: {subscriber_id}")
-            print(f"[ManyChat] Response: {response.text}")
+            print(f"[ManyChat] Field güncellendi: {subscriber_id}")
+            print(f"[ManyChat] Field Response: {field_response.text}")
+            
+            # Adım 2: Flow tetikle (eğer flow_ns varsa)
+            if flow_ns:
+                flow_response = await http.post(
+                    "https://api.manychat.com/fb/sending/sendFlow",
+                    json={
+                        "subscriber_id": int(subscriber_id),
+                        "flow_ns": flow_ns
+                    },
+                    headers=headers
+                )
+                print(f"[ManyChat] Flow tetiklendi: {subscriber_id}")
+                print(f"[ManyChat] Flow Response: {flow_response.text}")
         except Exception as e:
             print(f"ManyChat API Hatası: {e}")
 
