@@ -8,28 +8,36 @@
   --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
 }
 
 body {
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--bg-color);
+  background: #0f172a;
   color: var(--text-color);
   min-height: 100vh;
   min-height: 100dvh;
-  background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
   overflow-x: hidden;
 }
 
 #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
   min-height: 100vh;
   min-height: 100dvh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
 }
 
 button {
@@ -78,7 +86,7 @@ input::placeholder, textarea::placeholder {
   display: block;
   min-height: 100vh;
   min-height: 100dvh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
