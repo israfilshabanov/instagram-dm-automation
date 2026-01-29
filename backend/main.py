@@ -9,6 +9,7 @@ import os
 import json
 import httpx
 from openai import OpenAI
+from datetime import datetime, timedelta
 
 # Çevresel değişkenleri yükle
 load_dotenv()
@@ -129,6 +130,10 @@ class PromptPayload(BaseModel):
 class TestPayload(BaseModel):
     message: str
 
+class PausePayload(BaseModel):
+    subscriber_id: str
+    duration_minutes: Optional[int] = 60  # Default 1 saat
+
 # --- Database Functions (Supabase PostgreSQL with psycopg2) ---
 def get_db_connection():
     """Veritabanı bağlantısı al"""
@@ -141,15 +146,31 @@ def get_db_connection():
         return None
 
 def init_database():
-    """Veritabanı tablosunu kontrol et"""
+    """Veritabanı tablolarını kontrol et ve oluştur"""
     if not DATABASE_URL:
         print("DATABASE_URL tanımlı değil!")
         return
     
     conn = get_db_connection()
     if conn:
+        try:
+            with conn.cursor() as cur:
+                # paused_conversations tablosunu oluştur (yoksa)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS paused_conversations (
+                        subscriber_id VARCHAR(255) PRIMARY KEY,
+                        paused_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMPTZ,
+                        reason VARCHAR(255) DEFAULT 'human_takeover'
+                    )
+                """)
+                conn.commit()
+                print("Veritabanı tabloları hazır!")
+        except Exception as e:
+            print(f"Tablo oluşturma hatası: {e}")
+        finally:
+            conn.close()
         print("Veritabanı bağlantısı başarılı!")
-        conn.close()
 
 def load_config_sync():
     """Supabase'den config yükle (sync)"""
@@ -376,20 +397,107 @@ async def send_to_manychat(subscriber_id: str, message: str):
         except Exception as e:
             print(f"ManyChat API Hatası: {e}")
 
+def is_conversation_paused(subscriber_id: str) -> bool:
+    """
+    Human Takeover: Konuşma pause'da mı kontrol et
+    - Sahip cevap verdiyse, o kullanıcı için AI geçici olarak devre dışı
+    - expires_at süresi dolmuşsa, otomatik devam eder
+    """
+    if not DATABASE_URL:
+        return False
+    
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            # Süresi dolmuş pause'ları temizle
+            cur.execute("DELETE FROM paused_conversations WHERE expires_at < CURRENT_TIMESTAMP")
+            conn.commit()
+            
+            # Bu subscriber pause'da mı?
+            cur.execute(
+                "SELECT 1 FROM paused_conversations WHERE subscriber_id = %s AND expires_at > CURRENT_TIMESTAMP",
+                (subscriber_id,)
+            )
+            result = cur.fetchone()
+            return result is not None
+    except Exception as e:
+        print(f"Pause kontrol hatası: {e}")
+        return False
+    finally:
+        conn.close()
+
+def pause_conversation(subscriber_id: str, duration_minutes: int = 60, reason: str = "human_takeover"):
+    """
+    Konuşmayı pause'a al - Sahip cevap verdiğinde çağrılır
+    """
+    if not DATABASE_URL:
+        return False
+    
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            expires_at = datetime.now() + timedelta(minutes=duration_minutes)
+            cur.execute("""
+                INSERT INTO paused_conversations (subscriber_id, paused_at, expires_at, reason)
+                VALUES (%s, CURRENT_TIMESTAMP, %s, %s)
+                ON CONFLICT (subscriber_id) 
+                DO UPDATE SET paused_at = CURRENT_TIMESTAMP, expires_at = EXCLUDED.expires_at, reason = EXCLUDED.reason
+            """, (subscriber_id, expires_at, reason))
+            conn.commit()
+            print(f"[Human Takeover] Konuşma pause'a alındı: {subscriber_id} - {duration_minutes} dk")
+            return True
+    except Exception as e:
+        print(f"Pause hatası: {e}")
+        return False
+    finally:
+        conn.close()
+
+def resume_conversation(subscriber_id: str):
+    """
+    Konuşmayı devam ettir - AI tekrar devreye girer
+    """
+    if not DATABASE_URL:
+        return False
+    
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM paused_conversations WHERE subscriber_id = %s", (subscriber_id,))
+            conn.commit()
+            print(f"[Human Takeover] AI tekrar aktif: {subscriber_id}")
+            return True
+    except Exception as e:
+        print(f"Resume hatası: {e}")
+        return False
+    finally:
+        conn.close()
+
 async def process_webhook(subscriber_id: str, user_message: str):
     """
     Webhook işlemi - GPT-4o ile cache desteği
-    OpenAI Prompt Caching: Aynı sistem promptu tekrar geldiğinde otomatik cache'lenir
-    - %50 input token indirimi
-    - Daha hızlı yanıt süresi
-    - Minimum 1024 token gerekli (sistem promptumuz yeterli)
+    Human Takeover: Sahip cevap verdiyse AI devreye girmez
     """
     global current_system_prompt
+    
+    # HUMAN TAKEOVER CHECK
+    if is_conversation_paused(subscriber_id):
+        print(f"[Human Takeover] AI devre dışı - sahip bu kullanıcıyla konuşuyor: {subscriber_id}")
+        return  # AI cevap vermez, sahip devam eder
+    
     try:
         completion = client.chat.completions.create(
-            model="gpt-4o",  # Cache desteği için GPT-4o
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": current_system_prompt},  # Cache'lenen kısım
+                {"role": "system", "content": current_system_prompt},
                 {"role": "user", "content": user_message}
             ],
             temperature=0.7
@@ -397,7 +505,7 @@ async def process_webhook(subscriber_id: str, user_message: str):
         reply = completion.choices[0].message.content or "Üzr istəyirəm, hazırda cavab verə bilmirəm."
         print(f"[OpenAI] Cevap: {reply}")
         
-        # Cache bilgisi (eğer varsa)
+        # Cache bilgisi
         if hasattr(completion, 'usage') and completion.usage:
             cached = getattr(completion.usage, 'prompt_tokens_details', {})
             if cached:
@@ -474,3 +582,79 @@ def test_prompt(payload: TestPayload):
         return {"reply": completion.choices[0].message.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ═══════════════════════════════════════════════════════════════════
+# HUMAN TAKEOVER API - Sahip devreye girdiğinde AI'ı durdur
+# ═══════════════════════════════════════════════════════════════════
+
+@app.post("/admin/pauseAI")
+def pause_ai(payload: PausePayload):
+    """
+    AI'ı belirli bir kullanıcı için durdur
+    - Sahip Instagram'dan manuel cevap verdiğinde çağrılır
+    - Default 60 dakika, sonra AI otomatik devam eder
+    """
+    success = pause_conversation(payload.subscriber_id, payload.duration_minutes)
+    if success:
+        return {
+            "success": True,
+            "message": f"AI {payload.duration_minutes} dakika boyunca devre dışı",
+            "subscriber_id": payload.subscriber_id
+        }
+    raise HTTPException(status_code=500, detail="Pause işlemi başarısız")
+
+@app.post("/admin/resumeAI/{subscriber_id}")
+def resume_ai(subscriber_id: str):
+    """
+    AI'ı tekrar aktif et
+    - Sahip konuşmayı bitirdiğinde çağrılır
+    """
+    success = resume_conversation(subscriber_id)
+    if success:
+        return {
+            "success": True,
+            "message": "AI tekrar aktif",
+            "subscriber_id": subscriber_id
+        }
+    raise HTTPException(status_code=500, detail="Resume işlemi başarısız")
+
+@app.get("/admin/pausedConversations")
+def get_paused_conversations():
+    """
+    Şu an pause'da olan tüm konuşmaları listele
+    """
+    if not DATABASE_URL:
+        return {"paused": []}
+    
+    conn = get_db_connection()
+    if not conn:
+        return {"paused": []}
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT subscriber_id, paused_at, expires_at, reason 
+                FROM paused_conversations 
+                WHERE expires_at > CURRENT_TIMESTAMP
+                ORDER BY paused_at DESC
+            """)
+            rows = cur.fetchall()
+            return {"paused": [dict(row) for row in rows]}
+    except Exception as e:
+        print(f"Liste hatası: {e}")
+        return {"paused": []}
+    finally:
+        conn.close()
+
+@app.post("/webhook/humanReply")
+def human_reply_webhook(payload: dict):
+    """
+    ManyChat'ten sahip cevap verdiğinde tetiklenen webhook
+    - ManyChat'te "Live Chat" açıldığında bu endpoint'e POST yapılır
+    - Otomatik olarak o kullanıcı için AI durur
+    """
+    subscriber_id = str(payload.get("id", payload.get("subscriber_id", "")))
+    if subscriber_id:
+        pause_conversation(subscriber_id, duration_minutes=60, reason="human_reply")
+        return {"status": "paused", "subscriber_id": subscriber_id}
+    return {"status": "error", "message": "subscriber_id gerekli"}
