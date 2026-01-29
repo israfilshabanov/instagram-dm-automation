@@ -1,66 +1,24 @@
 import React, { useState } from 'react';
-import { savePrompt, type BriefData } from '../services/api';
 import { 
-    Building2, 
-    Target, 
-    Wallet, 
-    MapPin, 
-    Phone, 
-    HelpCircle, 
-    Palette, 
-    ShieldAlert,
-    ChevronLeft,
-    ChevronRight,
-    Sparkles,
-    Check,
-    Loader2
+    Building2, Target, Wallet, MapPin, Phone, HelpCircle, Palette, ShieldAlert, 
+    ChevronLeft, ChevronRight, Sparkles, Loader2, X, Check
 } from 'lucide-react';
+import { savePrompt, type BriefData } from '../services/api';
 
 const ProjectBrief: React.FC = () => {
     const [activeSection, setActiveSection] = useState(0);
     const [formData, setFormData] = useState<BriefData>({
-        businessName: '',
-        businessDescription: '',
-        yearsInBusiness: '',
-        mission: '',
-        coreValues: '',
-        servicesList: '',
-        serviceDetails: '',
-        hasTrialClass: '',
-        groupVsIndividual: '',
-        pricingDetails: '',
-        subscriptionPlans: '',
-        packageDiscounts: '',
-        familyDiscounts: '',
-        paymentMethods: '',
-        priceResponsePolicy: '',
-        workingDays: '',
-        workingHours: '',
-        holidaySchedule: '',
-        mainAddress: '',
-        directionsInfo: '',
-        otherBranches: '',
-        onlineServices: '',
-        phoneNumber: '',
-        email: '',
-        website: '',
-        socialMedia: '',
-        registrationProcess: '',
-        faq: '',
-        preferredLanguage: 'Azərbaycan dili',
-        communicationStyle: '',
-        useEmojis: '',
-        responseLength: '',
-        mentionCompetitors: '',
-        exactPricing: '',
-        topicsToAvoid: '',
-        urgentCases: '',
-        complaintHandling: ''
+        businessName: '', businessDescription: '', yearsInBusiness: '', mission: '', coreValues: '',
+        servicesList: '', serviceDetails: '', hasTrialClass: '', groupVsIndividual: '',
+        pricingDetails: '', subscriptionPlans: '', packageDiscounts: '', familyDiscounts: '', paymentMethods: '', priceResponsePolicy: '',
+        workingDays: '', workingHours: '', holidaySchedule: '', mainAddress: '', directionsInfo: '', otherBranches: '', onlineServices: '',
+        phoneNumber: '', email: '', website: '', socialMedia: '', registrationProcess: '',
+        faq: '', preferredLanguage: 'Azərbaycan dili', communicationStyle: '', useEmojis: '', responseLength: '',
+        mentionCompetitors: '', exactPricing: '', topicsToAvoid: '', urgentCases: '', complaintHandling: ''
     });
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
-    const [generatedPrompt, setGeneratedPrompt] = useState('');
-    const [showPreview, setShowPreview] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
 
     const handleChange = (field: keyof BriefData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -68,113 +26,78 @@ const ProjectBrief: React.FC = () => {
 
     const handleSave = async () => {
         if (!formData.businessName.trim()) {
-            setMessage('error:İşletmə adı mütləqdir!');
+            setShowError(true);
+            setTimeout(() => setShowError(false), 3000);
             return;
         }
-        
         setLoading(true);
         try {
-            const response = await savePrompt(formData);
-            if (response.generatedPrompt) {
-                setGeneratedPrompt(response.generatedPrompt);
-                setShowPreview(true);
-            }
-            setMessage('success:Dijital ikiz uğurla yaradıldı!');
+            await savePrompt(formData);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000);
         } catch (error) {
             console.error(error);
-            setMessage('error:Xəta baş verdi.');
+            setShowError(true);
+            setTimeout(() => setShowError(false), 3000);
         } finally {
             setLoading(false);
-            setTimeout(() => setMessage(''), 5000);
         }
     };
 
     const sections = [
-        {
-            title: 'Əsas Məlumatlar',
-            icon: Building2,
-            fields: [
-                { key: 'businessName', label: 'İşletmənin rəsmi adı', required: true, placeholder: 'Məs: Mehman Kung Fu Academy', type: 'input' },
-                { key: 'businessDescription', label: 'İşletmənizi bir cümlə ilə təsvir edin', placeholder: 'Məs: Gəncədə professional döyüş sənəti təlimləri...', type: 'textarea', rows: 2 },
-                { key: 'yearsInBusiness', label: 'Neçə ildir fəaliyyət göstərirsiniz?', placeholder: 'Məs: 5 il', type: 'input' },
-                { key: 'mission', label: 'Missiya', placeholder: 'İşletmənizin əsas məqsədi...', type: 'textarea', rows: 2 },
-                { key: 'coreValues', label: 'Əsas dəyərlər', placeholder: 'Məs: Peşəkarlıq, Nəzakət, İntizam...', type: 'input' }
-            ]
-        },
-        {
-            title: 'Xidmətlər və Qruplar',
-            icon: Target,
-            fields: [
-                { key: 'servicesList', label: 'Xidmətlər siyahısı', placeholder: 'Bütün xidmətlərinizi sadalayın...', type: 'textarea', rows: 3 },
-                { key: 'serviceDetails', label: 'Xidmət detalları', placeholder: 'Yaş qrupları, cədvəl, səviyyələr...', type: 'textarea', rows: 4 },
-                { key: 'hasTrialClass', label: 'Sınaq dərsi varmı?', placeholder: 'Məs: Bəli, ilk dərs pulsuzdur', type: 'input' },
-                { key: 'groupVsIndividual', label: 'Qrup və fərdi dərslər', placeholder: 'Məs: Həm qrup, həm fərdi dərslər var', type: 'input' }
-            ]
-        },
-        {
-            title: 'Qiymətlər',
-            icon: Wallet,
-            fields: [
-                { key: 'pricingDetails', label: 'Qiymət cədvəli', placeholder: 'Hər xidmət üçün qiymətlər...', type: 'textarea', rows: 3 },
-                { key: 'subscriptionPlans', label: 'Abunə planları', placeholder: 'Məs: Aylıq - 50 AZN, 3 aylıq - 130 AZN', type: 'textarea', rows: 2 },
-                { key: 'packageDiscounts', label: 'Paket endirimləri', placeholder: 'Məs: 6 aylıq alana 1 ay pulsuz', type: 'input' },
-                { key: 'familyDiscounts', label: 'Ailə endirimi', placeholder: 'Məs: 2-ci ailə üzvünə 20% endirim', type: 'input' },
-                { key: 'paymentMethods', label: 'Ödəniş üsulları', placeholder: 'Məs: Nağd, Kart, Bank köçürməsi', type: 'input' },
-                { key: 'priceResponsePolicy', label: 'Qiymət soruşanda necə cavab verilsin?', placeholder: 'Dəqiq qiymət verin və ya yönləndirin', type: 'textarea', rows: 2 }
-            ]
-        },
-        {
-            title: 'İş Saatları və Məkan',
-            icon: MapPin,
-            fields: [
-                { key: 'workingDays', label: 'İş günləri', placeholder: 'Məs: Bazar ertəsi - Cümə', type: 'input' },
-                { key: 'workingHours', label: 'İş saatları', placeholder: 'Məs: 09:00 - 21:00', type: 'input' },
-                { key: 'holidaySchedule', label: 'Bayram günləri', placeholder: 'Məs: Bayram günləri bağlıyıq', type: 'input' },
-                { key: 'mainAddress', label: 'Əsas ünvan', placeholder: 'Tam ünvan...', type: 'textarea', rows: 2 },
-                { key: 'directionsInfo', label: 'Necə gəlmək olar?', placeholder: 'Məs: Metro stansiyasından 5 dəq...', type: 'textarea', rows: 2 },
-                { key: 'otherBranches', label: 'Digər filiallar', placeholder: 'Digər məkanların ünvanları...', type: 'textarea', rows: 2 },
-                { key: 'onlineServices', label: 'Onlayn xidmət', placeholder: 'Məs: Zoom üzərindən fərdi dərslər', type: 'input' }
-            ]
-        },
-        {
-            title: 'Əlaqə və Qeydiyyat',
-            icon: Phone,
-            fields: [
-                { key: 'phoneNumber', label: 'Telefon', placeholder: 'Məs: +994 50 123 45 67', type: 'input' },
-                { key: 'email', label: 'Email', placeholder: 'Məs: info@example.com', type: 'input' },
-                { key: 'website', label: 'Veb sayt', placeholder: 'Məs: www.example.com', type: 'input' },
-                { key: 'socialMedia', label: 'Sosial media', placeholder: 'Instagram, Facebook, TikTok...', type: 'textarea', rows: 2 },
-                { key: 'registrationProcess', label: 'Qeydiyyat prosesi', placeholder: 'Necə qeydiyyatdan keçmək olar?', type: 'textarea', rows: 2 }
-            ]
-        },
-        {
-            title: 'Tez-Tez Soruşulan Suallar',
-            icon: HelpCircle,
-            fields: [
-                { key: 'faq', label: 'SSS və Cavablar (ən azı 5-10 sual)', placeholder: 'S: Qiymət nə qədərdir?\nC: Aylıq abunə 50 AZN-dir.\n\nS: Sınaq dərsi varmı?\nC: Bəli, ilk dərs pulsuzdur.', type: 'textarea', rows: 8 }
-            ]
-        },
-        {
-            title: 'Üslub və Dil',
-            icon: Palette,
-            fields: [
-                { key: 'preferredLanguage', label: 'Tercih edilən dil', placeholder: 'Məs: Azərbaycan dili', type: 'input' },
-                { key: 'communicationStyle', label: 'Üslub', placeholder: 'Məs: Samimi və dostcanlı', type: 'input' },
-                { key: 'useEmojis', label: 'Emoji istifadəsi', placeholder: 'Məs: Bəli, amma çox deyil', type: 'input' },
-                { key: 'responseLength', label: 'Cavab uzunluğu', placeholder: 'Məs: Qısa və konkret', type: 'input' }
-            ]
-        },
-        {
-            title: 'Məhdudiyyətlər',
-            icon: ShieldAlert,
-            fields: [
-                { key: 'mentionCompetitors', label: 'Rəqiblərdən danışılsınmı?', placeholder: 'Məs: Xeyr, heç vaxt', type: 'input' },
-                { key: 'exactPricing', label: 'Dəqiq qiymət verilsinmi?', placeholder: 'Bəli / Xeyr', type: 'input' },
-                { key: 'topicsToAvoid', label: 'Qaçınılacaq mövzular', placeholder: 'Məs: Siyasət, din...', type: 'textarea', rows: 2 },
-                { key: 'urgentCases', label: 'Təcili hallarda', placeholder: 'Məs: Telefon nömrəsini verin', type: 'input' },
-                { key: 'complaintHandling', label: 'Şikayət idarəetməsi', placeholder: 'Üzr istəyin və yönləndirin', type: 'textarea', rows: 2 }
-            ]
-        }
+        { title: 'Əsas Məlumatlar', icon: Building2, fields: [
+            { key: 'businessName', label: 'İşletmənin rəsmi adı', sub: 'Rəsmi biznes adınız', required: true, placeholder: 'Məs: Mehman Kung Fu Academy', type: 'input' },
+            { key: 'businessDescription', label: 'İşletmə təsviri', sub: 'Qısa təqdimat', placeholder: 'Gəncədə professional döyüş sənəti təlimləri...', type: 'textarea', rows: 3 },
+            { key: 'yearsInBusiness', label: 'Fəaliyyət müddəti', sub: 'Neçə ildir işləyirsiniz?', placeholder: 'Məs: 5 il', type: 'input' },
+            { key: 'mission', label: 'Missiya', sub: 'Əsas məqsədiniz', placeholder: 'İşletmənizin əsas məqsədi...', type: 'textarea', rows: 2 },
+            { key: 'coreValues', label: 'Əsas dəyərlər', sub: 'Şirkət dəyərləri', placeholder: 'Peşəkarlıq, Nəzakət, İntizam...', type: 'input' }
+        ]},
+        { title: 'Xidmətlər', icon: Target, fields: [
+            { key: 'servicesList', label: 'Xidmətlər siyahısı', sub: 'Təklif etdiyiniz xidmətlər', placeholder: 'Kung Fu, Taekwondo, Boks...', type: 'textarea', rows: 3 },
+            { key: 'serviceDetails', label: 'Xidmət detalları', sub: 'Yaş qrupları, səviyyələr', placeholder: 'Uşaq qrupu (5-10 yaş), Yeniyetmə...', type: 'textarea', rows: 4 },
+            { key: 'hasTrialClass', label: 'Sınaq dərsi', sub: 'Pulsuz sınaq varmı?', placeholder: 'Bəli, ilk dərs pulsuzdur', type: 'input' },
+            { key: 'groupVsIndividual', label: 'Dərs növləri', sub: 'Qrup / Fərdi', placeholder: 'Həm qrup, həm fərdi dərslər var', type: 'input' }
+        ]},
+        { title: 'Qiymətlər', icon: Wallet, fields: [
+            { key: 'pricingDetails', label: 'Qiymət cədvəli', sub: 'Xidmət qiymətləri', placeholder: 'Aylıq: 50 AZN, Fərdi: 30 AZN/dərs', type: 'textarea', rows: 3 },
+            { key: 'subscriptionPlans', label: 'Abunə planları', sub: 'Paket seçimləri', placeholder: '1 ay - 50 AZN, 3 ay - 130 AZN', type: 'textarea', rows: 2 },
+            { key: 'packageDiscounts', label: 'Endirim', sub: 'Paket endirimləri', placeholder: '6 aylıq alana 1 ay pulsuz', type: 'input' },
+            { key: 'familyDiscounts', label: 'Ailə endirimi', sub: 'Ailə üzvləri üçün', placeholder: '2-ci üzvə 20% endirim', type: 'input' },
+            { key: 'paymentMethods', label: 'Ödəniş üsulları', sub: 'Qəbul edilən üsullar', placeholder: 'Nağd, Kart, Bank köçürməsi', type: 'input' },
+            { key: 'priceResponsePolicy', label: 'Qiymət siyasəti', sub: 'Necə cavab verilsin?', placeholder: 'Dəqiq qiymət verin və ya telefona yönləndirin', type: 'textarea', rows: 2 }
+        ]},
+        { title: 'Məkan və Vaxt', icon: MapPin, fields: [
+            { key: 'workingDays', label: 'İş günləri', sub: 'Həftənin hansı günləri?', placeholder: 'Bazar ertəsi - Şənbə', type: 'input' },
+            { key: 'workingHours', label: 'İş saatları', sub: 'Açılış-bağlanış', placeholder: '09:00 - 21:00', type: 'input' },
+            { key: 'holidaySchedule', label: 'Bayramlar', sub: 'Bayram günləri', placeholder: 'Bayram günləri bağlıyıq', type: 'input' },
+            { key: 'mainAddress', label: 'Ünvan', sub: 'Əsas məkan', placeholder: 'Gəncə ş., Nizami küç. 45', type: 'textarea', rows: 2 },
+            { key: 'directionsInfo', label: 'Yol tarifi', sub: 'Necə gəlmək olar?', placeholder: 'Metro "28 May"dan 5 dəq piyada', type: 'textarea', rows: 2 },
+            { key: 'otherBranches', label: 'Filiallar', sub: 'Digər məkanlar', placeholder: 'Bakı filialı: ...', type: 'textarea', rows: 2 },
+            { key: 'onlineServices', label: 'Onlayn xidmət', sub: 'Uzaqdan dərslər', placeholder: 'Zoom ilə fərdi dərslər', type: 'input' }
+        ]},
+        { title: 'Əlaqə', icon: Phone, fields: [
+            { key: 'phoneNumber', label: 'Telefon', sub: 'Əlaqə nömrəsi', placeholder: '+994 50 123 45 67', type: 'input' },
+            { key: 'email', label: 'Email', sub: 'Elektron poçt', placeholder: 'info@example.com', type: 'input' },
+            { key: 'website', label: 'Veb sayt', sub: 'İnternet səhifəsi', placeholder: 'www.example.com', type: 'input' },
+            { key: 'socialMedia', label: 'Sosial media', sub: 'Hesablarınız', placeholder: '@instagram, /facebook', type: 'textarea', rows: 2 },
+            { key: 'registrationProcess', label: 'Qeydiyyat', sub: 'Necə yazılmaq olar?', placeholder: 'DM yazın və ya zəng edin', type: 'textarea', rows: 2 }
+        ]},
+        { title: 'SSS', icon: HelpCircle, fields: [
+            { key: 'faq', label: 'Tez-tez soruşulan suallar', sub: 'Ən azı 5-10 sual-cavab yazın', placeholder: 'S: Qiymət nə qədərdir?\nC: Aylıq 50 AZN.\n\nS: Sınaq var?\nC: Bəli, ilk dərs pulsuz.', type: 'textarea', rows: 10 }
+        ]},
+        { title: 'Üslub', icon: Palette, fields: [
+            { key: 'preferredLanguage', label: 'Dil', sub: 'Əsas dil', placeholder: 'Azərbaycan dili', type: 'input' },
+            { key: 'communicationStyle', label: 'Ton', sub: 'Ünsiyyət tərzi', placeholder: 'Samimi və dostcanlı', type: 'input' },
+            { key: 'useEmojis', label: 'Emoji', sub: 'İstifadə edilsinmi?', placeholder: 'Bəli, amma az', type: 'input' },
+            { key: 'responseLength', label: 'Cavab uzunluğu', sub: 'Qısa / Orta / Uzun', placeholder: 'Qısa və konkret', type: 'input' }
+        ]},
+        { title: 'Məhdudiyyətlər', icon: ShieldAlert, fields: [
+            { key: 'mentionCompetitors', label: 'Rəqiblər', sub: 'Danışılsınmı?', placeholder: 'Xeyr', type: 'input' },
+            { key: 'exactPricing', label: 'Dəqiq qiymət', sub: 'Verilsinmi?', placeholder: 'Bəli', type: 'input' },
+            { key: 'topicsToAvoid', label: 'Qaçınılacaq mövzular', sub: 'Toxunulmaz mövzular', placeholder: 'Siyasət, din, şəxsi həyat', type: 'textarea', rows: 3 },
+            { key: 'urgentCases', label: 'Təcili hallar', sub: 'Nə etsin?', placeholder: 'Telefon nömrəsini versin', type: 'input' },
+            { key: 'complaintHandling', label: 'Şikayətlər', sub: 'Necə cavab versin?', placeholder: 'Üzr istəyib menecerə yönləndirsin', type: 'textarea', rows: 2 }
+        ]}
     ];
 
     const currentSection = sections[activeSection];
@@ -456,65 +379,93 @@ const ProjectBrief: React.FC = () => {
                 )}
             </div>
 
-            {/* Message */}
-            {message && (
-                <div style={{ 
-                    marginTop: '1.5rem',
-                    padding: '1rem 1.25rem', 
-                    borderRadius: '10px',
-                    background: message.startsWith('success') 
-                        ? 'rgba(34, 197, 94, 0.15)' 
-                        : 'rgba(239, 68, 68, 0.15)',
-                    border: message.startsWith('success')
-                        ? '1px solid rgba(34, 197, 94, 0.3)'
-                        : '1px solid rgba(239, 68, 68, 0.3)',
+            {/* Success Toast */}
+            {showSuccess && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem'
+                    gap: '0.75rem',
+                    padding: '1rem 1.5rem',
+                    background: 'rgba(6, 78, 59, 0.95)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: '1rem',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(12px)',
+                    zIndex: 50,
+                    maxWidth: '90%',
+                    width: 'fit-content'
                 }}>
-                    {message.startsWith('success') ? (
-                        <Check size={20} color="#22c55e" />
-                    ) : (
-                        <ShieldAlert size={20} color="#ef4444" />
-                    )}
-                    <span style={{ color: message.startsWith('success') ? '#22c55e' : '#ef4444' }}>
-                        {message.split(':')[1]}
-                    </span>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: '#22c55e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                    }}>
+                        <Check size={18} color="white" />
+                    </div>
+                    <div>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '0.875rem' }}>Uğurlu əməliyyat!</p>
+                        <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(187, 247, 208, 0.9)' }}>Dijital ikiz uğurla yaradıldı.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowSuccess(false)}
+                        style={{ marginLeft: '0.5rem', background: 'none', border: 'none', color: 'rgba(187, 247, 208, 0.7)', cursor: 'pointer', padding: '4px' }}
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
             )}
 
-            {/* Generated Prompt Preview */}
-            {showPreview && generatedPrompt && (
+            {/* Error Toast */}
+            {showError && (
                 <div style={{
-                    marginTop: '1.5rem',
-                    padding: '1.25rem',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                    position: 'fixed',
+                    bottom: '2rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '1rem 1.5rem',
+                    background: 'rgba(127, 29, 29, 0.95)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '1rem',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(12px)',
+                    zIndex: 50,
+                    maxWidth: '90%',
+                    width: 'fit-content'
                 }}>
-                    <h4 style={{ 
-                        margin: '0 0 1rem', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem',
-                        fontSize: '1rem'
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
                     }}>
-                        <Sparkles size={18} color="#a855f7" />
-                        Yaradılan Sistem Promptu
-                    </h4>
-                    <pre style={{ 
-                        whiteSpace: 'pre-wrap', 
-                        fontSize: '0.8125rem',
-                        background: 'rgba(0,0,0,0.3)',
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        lineHeight: '1.6',
-                        margin: 0
-                    }}>
-                        {generatedPrompt}
-                    </pre>
+                        <X size={18} color="white" />
+                    </div>
+                    <div>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '0.875rem' }}>Xəta!</p>
+                        <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(254, 202, 202, 0.9)' }}>İşletmə adı mütləqdir.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowError(false)}
+                        style={{ marginLeft: '0.5rem', background: 'none', border: 'none', color: 'rgba(254, 202, 202, 0.7)', cursor: 'pointer', padding: '4px' }}
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
             )}
 
