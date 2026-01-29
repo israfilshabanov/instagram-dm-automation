@@ -107,11 +107,13 @@ const ProjectBrief: React.FC = () => {
         <div style={{ 
             width: '100%',
             minHeight: '100vh',
-            background: '#0f172a'
+            background: '#0f172a',
+            margin: 0,
+            padding: 0
         }}>
             {/* Header */}
             <div style={{
-                padding: '1rem',
+                padding: '0.75rem 1rem',
                 borderBottom: '1px solid rgba(255,255,255,0.1)',
                 background: 'rgba(17, 17, 24, 0.95)',
                 position: 'sticky',
@@ -119,15 +121,16 @@ const ProjectBrief: React.FC = () => {
                 zIndex: 40,
                 textAlign: 'center'
             }}>
-                <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+                <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
                     Dijital İkiz Yaradıcısı
                 </h1>
             </div>
             
-            {/* Form Content */}
+            {/* Form Content - TAM EKRAN */}
             <div style={{ 
-                padding: '1rem',
-                maxWidth: '100%'
+                padding: '0.75rem',
+                width: '100%',
+                boxSizing: 'border-box'
             }}>
             {/* Progress Bar */}
             <div style={{ marginBottom: '2rem' }}>
