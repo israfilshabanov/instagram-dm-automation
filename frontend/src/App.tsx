@@ -50,21 +50,25 @@ function App() {
             ) : (
               <div style={{
                 width: '100%',
-                maxWidth: '900px',
-                padding: '1rem',
-                minHeight: '100vh'
+                minHeight: '100vh',
+                padding: '0'
               }}>
                 {/* Header */}
                 <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center', 
-                  marginBottom: '1.5rem',
-                  padding: '0.5rem 0'
+                  padding: '1rem',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(17, 17, 24, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 40
                 }}>
                   <h1 style={{ 
                     margin: 0, 
-                    fontSize: 'clamp(1rem, 4vw, 1.25rem)',
+                    fontSize: '1.125rem',
                     fontWeight: '600'
                   }}>
                     Dijital İkiz Yaradıcısı
@@ -72,10 +76,8 @@ function App() {
                   <LogoutButton />
                 </div>
                 
-                {/* Brief Form */}
-                <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                  <ProjectBrief />
-                </div>
+                {/* Brief Form - Full Width */}
+                <ProjectBrief />
               </div>
             )
           } />

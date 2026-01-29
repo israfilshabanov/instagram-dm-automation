@@ -106,9 +106,8 @@ const ProjectBrief: React.FC = () => {
     return (
         <div style={{ 
             width: '100%',
-            maxWidth: '800px',
-            margin: '0 auto',
-            padding: '1rem'
+            padding: '1rem',
+            boxSizing: 'border-box'
         }}>
             {/* Progress Bar */}
             <div style={{ marginBottom: '2rem' }}>
