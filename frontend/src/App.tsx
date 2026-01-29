@@ -11,39 +11,8 @@ function App() {
           {/* Ana sayfa - direkt Brief */}
           <Route path="/" element={<Navigate to="/brief" replace />} />
 
-          {/* Brief sayfası */}
-          <Route path="/brief" element={
-            <div style={{
-              width: '100%',
-              minHeight: '100vh',
-              padding: '0'
-            }}>
-              {/* Header */}
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                padding: '1rem',
-                borderBottom: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(17, 17, 24, 0.8)',
-                backdropFilter: 'blur(10px)',
-                position: 'sticky',
-                top: 0,
-                zIndex: 40
-              }}>
-                <h1 style={{ 
-                  margin: 0, 
-                  fontSize: '1.125rem',
-                  fontWeight: '600'
-                }}>
-                  Dijital İkiz Yaradıcısı
-                </h1>
-              </div>
-              
-              {/* Brief Form - Full Width */}
-              <ProjectBrief />
-            </div>
-          } />
+          {/* Brief sayfası - TAM EKRAN */}
+          <Route path="/brief" element={<ProjectBrief />} />
 
           {/* Admin paneli */}
           <Route path="/admin" element={

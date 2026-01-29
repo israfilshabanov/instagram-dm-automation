@@ -106,9 +106,29 @@ const ProjectBrief: React.FC = () => {
     return (
         <div style={{ 
             width: '100%',
-            padding: '1rem',
-            boxSizing: 'border-box'
+            minHeight: '100vh',
+            background: '#0f172a'
         }}>
+            {/* Header */}
+            <div style={{
+                padding: '1rem',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(17, 17, 24, 0.95)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 40,
+                textAlign: 'center'
+            }}>
+                <h1 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
+                    Dijital İkiz Yaradıcısı
+                </h1>
+            </div>
+            
+            {/* Form Content */}
+            <div style={{ 
+                padding: '1rem',
+                maxWidth: '100%'
+            }}>
             {/* Progress Bar */}
             <div style={{ marginBottom: '2rem' }}>
                 <div style={{ 
@@ -475,6 +495,7 @@ const ProjectBrief: React.FC = () => {
                     to { transform: rotate(360deg); }
                 }
             `}</style>
+            </div>
         </div>
     );
 };
