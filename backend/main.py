@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
-from databases import Database
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 import json
 import httpx
@@ -14,7 +15,6 @@ load_dotenv()
 
 # Supabase PostgreSQL bağlantısı
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-database = Database(DATABASE_URL) if DATABASE_URL else None
 
 app = FastAPI(
     title="Instagram DM Automation API",
@@ -129,62 +129,79 @@ class PromptPayload(BaseModel):
 class TestPayload(BaseModel):
     message: str
 
-# --- Database Functions (Supabase PostgreSQL) ---
-async def init_database():
-    """Veritabanı tablosunu oluştur"""
-    if not database:
+# --- Database Functions (Supabase PostgreSQL with psycopg2) ---
+def get_db_connection():
+    """Veritabanı bağlantısı al"""
+    if not DATABASE_URL:
+        return None
+    try:
+        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    except Exception as e:
+        print(f"Veritabanı bağlantı hatası: {e}")
+        return None
+
+def init_database():
+    """Veritabanı tablosunu kontrol et"""
+    if not DATABASE_URL:
         print("DATABASE_URL tanımlı değil!")
         return
     
-    try:
-        await database.connect()
-        # Config tablosu oluştur
-        await database.execute("""
-            CREATE TABLE IF NOT EXISTS config (
-                id SERIAL PRIMARY KEY,
-                key VARCHAR(255) UNIQUE NOT NULL,
-                value TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    conn = get_db_connection()
+    if conn:
         print("Veritabanı bağlantısı başarılı!")
-    except Exception as e:
-        print(f"Veritabanı hatası: {e}")
+        conn.close()
 
-async def load_config():
-    """Supabase'den config yükle"""
-    if not database:
+def load_config_sync():
+    """Supabase'den config yükle (sync)"""
+    if not DATABASE_URL:
+        return {}
+    
+    conn = get_db_connection()
+    if not conn:
         return {}
     
     try:
-        rows = await database.fetch_all("SELECT key, value FROM config")
-        config = {}
-        for row in rows:
-            config[row['key']] = json.loads(row['value'])
-        return config
+        with conn.cursor() as cur:
+            cur.execute("SELECT key, value FROM config")
+            rows = cur.fetchall()
+            config = {}
+            for row in rows:
+                config[row['key']] = json.loads(row['value'])
+            return config
     except Exception as e:
         print(f"Config yükleme hatası: {e}")
         return {}
+    finally:
+        conn.close()
 
-async def save_config(data: dict):
-    """Config'i Supabase'e kaydet"""
-    if not database:
+def save_config_sync(data: dict):
+    """Config'i Supabase'e kaydet (sync)"""
+    if not DATABASE_URL:
         print("DATABASE_URL tanımlı değil - config kaydedilemedi!")
         return
     
+    conn = get_db_connection()
+    if not conn:
+        return
+    
     try:
-        for key, value in data.items():
-            json_value = json.dumps(value, ensure_ascii=False)
-            # UPSERT - varsa güncelle, yoksa ekle
-            await database.execute("""
-                INSERT INTO config (key, value, updated_at) 
-                VALUES (:key, :value, CURRENT_TIMESTAMP)
-                ON CONFLICT (key) 
-                DO UPDATE SET value = :value, updated_at = CURRENT_TIMESTAMP
-            """, {"key": key, "value": json_value})
+        with conn.cursor() as cur:
+            for key, value in data.items():
+                json_value = json.dumps(value, ensure_ascii=False)
+                # UPSERT - varsa güncelle, yoksa ekle
+                cur.execute("""
+                    INSERT INTO config (key, value, updated_at) 
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (key) 
+                    DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+                """, (key, json_value))
+            conn.commit()
         print(f"Config Supabase'e kaydedildi!")
     except Exception as e:
         print(f"Config kaydetme hatası: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 def generate_prompt_with_ai(brief: BriefData) -> str:
     """AI kullanarak 40 sual bazasında sistem promptu oluştur"""
@@ -390,23 +407,17 @@ async def process_webhook(subscriber_id: str, user_message: str):
     except Exception as e:
         print(f"İşlem Hatası: {e}")
 
-# --- Startup/Shutdown Events ---
+# --- Startup Event ---
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     global current_system_prompt
-    # Veritabanı bağlantısını başlat
-    await init_database()
+    # Veritabanı bağlantısını test et
+    init_database()
     # Kayıtlı config'i yükle
-    config = await load_config()
+    config = load_config_sync()
     if config.get("systemPrompt"):
         current_system_prompt = config["systemPrompt"]
         print(f"Kayıtlı sistem promptu yüklendi: {current_system_prompt[:50]}...")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if database:
-        await database.disconnect()
-        print("Veritabanı bağlantısı kapatıldı.")
 
 # --- Routes ---
 @app.get("/")
@@ -424,7 +435,7 @@ async def webhook(payload: WebhookPayload, background_tasks: BackgroundTasks):
     return {"status": "received"}
 
 @app.post("/admin/savePrompt")
-async def save_prompt(payload: BriefPayload):
+def save_prompt(payload: BriefPayload):
     global current_system_prompt
     
     brief = payload.briefData
@@ -439,7 +450,7 @@ async def save_prompt(payload: BriefPayload):
         "briefData": brief.model_dump(),
         "systemPrompt": generated_prompt
     }
-    await save_config(config)
+    save_config_sync(config)
     
     print(f"Sistem Promptu Güncellendi: {current_system_prompt[:100]}...")
     return {
