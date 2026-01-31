@@ -91,3 +91,62 @@
    - External Request URL'yi Railway URL'ye güncelle
    - `AI_Response` custom field oluştur
    - "Send AI Response" flow oluştur
+
+---
+
+## Session: 2026-01-31 00:47 (UTC+04:00)
+
+### Goal
+- Shabanov Sport Academy brief data'sını Railway backend'e gönder
+- Supabase'de systemPrompt güncelle
+- AI dijital ikiz oluştur
+
+### Changes
+- [x] Railway backend URL düzeltildi (Render değil!)
+  - URL: `https://instagram-dm-automation-production.up.railway.app`
+- [x] Brief data Railway'a gönderildi
+  - 40 alanın tamamı gönderildi
+  - Supabase'de `briefData` ve `systemPrompt` güncellendi
+- [x] AI sistem promptu oluşturuldu (11 maddelik detaylı prompt)
+
+### Supabase Güncel Durumu
+| Key | Durum |
+|-----|-------|
+| briefData | ✅ Tam JSON (40 alan) |
+| systemPrompt | ✅ 11 maddelik detaylı prompt |
+
+### System Prompt İçeriği
+1. Azərbaycan/Rus dili + motivasyon emojileri
+2. Qısa və konkret cavablar
+3. Missiya, dəyərlər, xidmətlər
+4. Yaş qrupları, cədvəl, fərdi məşqlər
+5. Qiymət → telefon/WhatsApp yönləndirmə
+6. İlk sınaq dərs pulsuz
+7. İş saatları, məkan, nəqliyyat
+8. Şikayət → üzür + menecerə yönləndir
+9. Rəqiblər, siyasət, din, şəxsi həyat YOX
+10. Təcili hallarda +994512353986
+11. Link açamır, əlaqə məlumatlarını paylaş
+
+### Verification
+- [x] Railway backend 200 OK döndü
+- [x] Supabase güncel
+- [x] Model: gpt-4o-mini (2.5M token/gün + Prompt Caching)
+- [x] System prompt: Sabit şablon - tüm bilgiler dahil (telefon, adres, qiymət)
+- [x] GitHub push yapıldı
+- [x] Railway deploy tamamlandı
+- [x] ManyChat'te canlı test - BAŞARILI ✅
+
+### Test Sonuçları (2026-01-31 02:06 UTC)
+- İlk istek: cached_tokens=0 (cache oluşturuldu)
+- Sonraki istekler: cached_tokens=1024 ✅ (cache çalışıyor)
+- Telefon numaraları: +994775479747, +994512353986 ✅
+- Ünvan: Binəqədi.r Səttar bəhlulzadə 101 ✅
+- Qiymətlər: 100/80/60 azn ✅
+- Ödəmə: Nəğd və kart ✅
+
+### Session Kapanış
+- [x] progress.md güncellendi
+- [x] Tüm maddeler DONE
+- [x] Blocked madde yok
+- [x] Sistem production'da başarıyla çalışıyor
