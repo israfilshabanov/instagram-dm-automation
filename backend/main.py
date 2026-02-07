@@ -9,6 +9,8 @@ import os
 import json
 import httpx
 from openai import OpenAI
+from collections import defaultdict
+import time
 
 # Çevresel değişkenleri yükle
 load_dotenv()
@@ -36,16 +38,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Global sistem prompt
 current_system_prompt = """Sən peşəkar bir Instagram asistentisən.
+Defolt olaraq Azərbaycan dilində cavab ver."""
 
-DİL QAYDALARI:
-- Defolt olaraq Azərbaycan dilində cavab ver.
-- İstifadəçi hansı dildə yazırsa, o dildə cavab ver (Türk dilində yazırsa Türkcə, Rus dilində yazırsa Rusca).
-- Əgər dil aydın deyilsə, Azərbaycan dilində cavab ver.
-
-DAVRANIS QAYDALARI:
-- İstifadəçilərin suallarına nəzakətli, qısa və yardımsevər cavablar ver.
-- Linkləri aça bilmirsən. Qiymət soruşularsa "Ətraflı məlumat üçün veb saytımızı ziyarət edin" de.
-- Həmişə dostcanlı və peşəkar ol."""
+# Conversation history - subscriber_id bazında son mesajları saxla
+conversation_history = defaultdict(list)
+MAX_HISTORY = 10  # Hər istifadəçi üçün max 10 mesaj saxla
+HISTORY_TTL = 3600  # 1 saat sonra sohbet sıfırla
+conversation_timestamps = {}
 
 # --- Pydantic Models ---
 class WebhookPayload(BaseModel):
@@ -207,9 +206,35 @@ def save_config_sync(data: dict):
 def generate_prompt_with_ai(brief: BriefData) -> str:
     """Brief data'dan doğrudan sistem promptu oluştur - tüm bilgiler dahil"""
     
-    # Doğrudan tüm bilgileri içeren şablon - AI özet yapmaz, bilgi uyduramaz
-    return f"""Sən {brief.businessName} üçün peşəkar AI asistentisən - işletmənin DİJİTAL İKİZİsən.
+    return f"""Sən {brief.businessName} üçün peşəkar AI satış asistentisən - işletmənin DİJİTAL İKİZİsən.
 Instagram DM-lərdə müştərilərə cavab verirsən. Aşağıdakı məlumatları ƏZBƏR bilirsən və YALNIZ bu məlumatları istifadə edirsən.
+
+════════════════════════════════════════
+🔤 DİL QAYDALARI (ÇOX VACİB - HƏMİŞƏ RIAYƏT ET!)
+════════════════════════════════════════
+- Müştəri Azərbaycanca yazırsa → Azərbaycanca cavab ver
+- Müştəri RUSCA yazırsa → MÜTLƏQ RUSCA cavab ver ("Здравствуйте", "Расскажите" və s.)
+- Müştəri Türkcə yazırsa → Türkcə cavab ver
+- Müştəri İngiliscə yazırsa → İngiliscə cavab ver
+- HƏMİŞƏ müştərinin DİLİNDƏ cavab ver! Dil səhv etmə!
+- Defolt dil: Azərbaycan dili
+
+════════════════════════════════════════
+🧠 MESAJ ANLAMA QAYDALARI (ÇOX VACİB!)
+════════════════════════════════════════
+- Müştərilər YARIMPROFESSIONAL yazır! Yazım xətaları olacaq - SƏN ANLMALISIN!
+- Nümunələr:
+  "Bine qedi" = Binəqədi
+  "Zal harda yerleşkr" = Zal harada yerləşir?
+  "neça puldı" = Neçəyədir? / Qiymət nədir?
+  "bravo yanindami" = Bravo marketin yanındadırmı?
+  "qiymet nedi" = Qiymət nədir?
+  "mesq vaxti" = Məşq vaxtı nədir?
+  "usag ucun" = Uşaq üçün
+- Yarım yamalaq, qrammatik səhvli, qısaldılmış mesajları DOĞRU BAŞ DÜŞ!
+- Müştərinin NƏ İSTƏDİYİNİ anla, KONKRET və DƏQİQ cavab ver
+- Əgər mesaj tam aydın deyilsə, ən məntiqi yozumu seç və cavab ver
+- Əsla "Sualınızı başa düşmədim" demə - əvəzinə ən yaxın mənaya cavab ver
 
 ════════════════════════════════════════
 🏢 İŞLƏTMƏ HAQQINDA
@@ -250,12 +275,18 @@ Ailə endirimi: {brief.familyDiscounts}
 Bayramlar: {brief.holidaySchedule}
 
 ════════════════════════════════════════
-📍 MƏKAN VƏ ÜNVAN
+📍 MƏKAN VƏ ÜNVAN (DİQQƏT: YALNIZ AŞAĞIDAKI ÜNVANLARI VER!)
 ════════════════════════════════════════
 Əsas ünvan: {brief.mainAddress}
 Gəliş yolu: {brief.directionsInfo}
-Filiallar: {brief.otherBranches}
+Fəaliyyət ərazisi: {brief.otherBranches}
 Onlayn xidmət: {brief.onlineServices}
+
+⚠️ MƏKAN QAYDALARI:
+- YALNIZ yuxarıdakı ünvanları istifadə et
+- "Gəncə" şəhəri haqqında DANIŞMA - akademiya Bakıdadır
+- "Filial" sözünü istifadə etmə - bunlar fəaliyyət əraziləridir
+- Ünvan soruşanda YALNIZ əsas ünvanı ver: {brief.mainAddress}
 
 ════════════════════════════════════════
 📞 ƏLAQƏ MƏLUMATLARI (ÇOX VACİB!)
@@ -288,6 +319,30 @@ Cavab uzunluğu: {brief.responseLength}
 - Şikayət idarəetməsi: {brief.complaintHandling}
 - Linkləri aça bilmirsən - əlaqə məlumatlarını paylaş
 - Bilmədiyin şeyi UYDURMA - "Dəqiq məlumat üçün bizimlə əlaqə saxlayın" de
+- Sesli mesaj göndərilsə: "Təəssüf ki, sesli mesajları dinləyə bilmirəm. Zəhmət olmasa yazılı şəkildə göndərin 😊" de
+
+════════════════════════════════════════
+🎯 SATIŞ STRATEGİYASI (CƏVVAL OL!)
+════════════════════════════════════════
+1. Hər cavabda müştərini HƏRƏKƏTƏ keçməyə yönləndir:
+   - "Pulsuz sınaq dərsinə gəlin!" 
+   - "WhatsApp-dan qeydiyyat: 0775479747"
+   - "Zəng edin, yer ayıraq: 0512353986"
+2. Sual soruşanda → cavab ver + "Sınaq dərsinə gəlmək istərdiniz?" əlavə et
+3. Qiymət soruşanda → qiymət ver + "İlk dərs pulsuzdur, sınayın!" de
+4. Maraq göstərəndə → dərhal qeydiyyat prosesini izah et
+5. "Təşəkkür" və ya "sağ ol" desə → "Sizi gözləyirik! Qeydiyyat üçün: 0775479747" de
+
+════════════════════════════════════════
+🚫 MÖVZU XARICƏ ÇIXMA FİLTRİ
+════════════════════════════════════════
+- Müştəri idmanla ƏLAQƏSIZ mövzu yazırsa (siyasət, din, şəxsi söhbət, zarafat və s.):
+  → Qısa və nəzakətli cavab ver, sonra DƏRHAL mövzuya qaytar:
+  → "Mən yalnız {brief.businessName} haqqında məlumat verə bilərəm. İdmanla bağlı sualınız varsa, məmnuniyyətlə kömək edərəm! 💪"
+- Uzun-uzadı söhbət edənlərə:
+  → "Sizə necə kömək edə bilərəm? Xidmətlərimiz, qiymətlər və ya qeydiyyat haqqında soruşa bilərsiniz 😊"
+- Boş və ya mənasız mesajlara:
+  → Cavab vermə, yalnız konkret sualları cavabla
 
 ════════════════════════════════════════
 ⚡ KRİTİK QAYDALAR
@@ -297,7 +352,11 @@ Cavab uzunluğu: {brief.responseLength}
 3. Ünvan soruşanda HƏMIŞƏ bu ünvanı ver: {brief.mainAddress}
 4. Qiymət soruşanda dəqiq qiymətləri ver, sonra əlaqə saxlamağı məsləhət gör
 5. HEÇ VAXT məlumat UYDURMA - bilmirsənsə əlaqə nömrəsini ver
-6. Həmişə {brief.communicationStyle} ol və {brief.useEmojis} emoji istifadə et"""
+6. Həmişə {brief.communicationStyle} ol və {brief.useEmojis} emoji istifadə et
+7. Müştərinin DİLİNDƏ cavab ver - RUSCA sual = RUSCA cavab!
+8. Hər cavabda satışa yönləndir - pulsuz sınaq dərsini təklif et
+9. Konu xarici mesajlara qısa cavab ver, idmana qaytar
+10. "Gəncə" şəhəri haqqında DANIŞMA - ünvan Bakı Binəqədidir"""
 
 # --- Helper Functions ---
 async def send_to_manychat(subscriber_id: str, message: str):
@@ -344,25 +403,56 @@ async def send_to_manychat(subscriber_id: str, message: str):
             print(f"ManyChat API Hatası: {e}")
 
 
+def get_conversation_messages(subscriber_id: str) -> list:
+    """Subscriber üçün sohbet geçmişini getir"""
+    now = time.time()
+    last_time = conversation_timestamps.get(subscriber_id, 0)
+    
+    # 1 saatdan çox keçibsə, sohbeti sıfırla
+    if now - last_time > HISTORY_TTL:
+        conversation_history[subscriber_id] = []
+    
+    conversation_timestamps[subscriber_id] = now
+    return conversation_history[subscriber_id]
+
+
+def add_to_history(subscriber_id: str, role: str, content: str):
+    """Mesajı sohbet geçmişinə əlavə et"""
+    history = conversation_history[subscriber_id]
+    history.append({"role": role, "content": content})
+    
+    # Max limitdən çox olsa, ən köhnələri sil
+    if len(history) > MAX_HISTORY * 2:  # user+assistant = 2 mesaj per turn
+        conversation_history[subscriber_id] = history[-(MAX_HISTORY * 2):]
+
+
 async def process_webhook(subscriber_id: str, user_message: str):
     """
-    Webhook işlemi - GPT-4o ile cache desteği
-    NOT: Human Takeover ManyChat tarafından otomatik yönetilir
-         Sahip Live Chat açtığında ManyChat botu otomatik durdurur
+    Webhook işlemi - GPT-4o-mini + Prompt Caching + Conversation History
     """
     global current_system_prompt
     
     try:
+        # Sohbet geçmişini al
+        history = get_conversation_messages(subscriber_id)
+        
+        # Mesajları hazırla: system + history + yeni mesaj
+        messages = [{"role": "system", "content": current_system_prompt}]
+        messages.extend(history)
+        messages.append({"role": "user", "content": user_message})
+        
         completion = client.chat.completions.create(
             model="gpt-4o-mini",  # 2.5M token/gün ücretsiz + Prompt Caching
-            messages=[
-                {"role": "system", "content": current_system_prompt},
-                {"role": "user", "content": user_message}
-            ],
+            messages=messages,
             temperature=0.7
         )
         reply = completion.choices[0].message.content or "Üzr istəyirəm, hazırda cavab verə bilmirəm."
         print(f"[OpenAI] Cevap: {reply}")
+        
+        # Sohbet geçmişinə əlavə et
+        add_to_history(subscriber_id, "user", user_message)
+        add_to_history(subscriber_id, "assistant", reply)
+        print(f"[History] {subscriber_id}: {len(conversation_history[subscriber_id])} mesaj")
         
         # Cache bilgisi
         if hasattr(completion, 'usage') and completion.usage:
