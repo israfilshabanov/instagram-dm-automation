@@ -521,7 +521,7 @@ def test_prompt(payload: TestPayload):
     global current_system_prompt
     try:
         completion = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": current_system_prompt},
                 {"role": "user", "content": payload.message}
